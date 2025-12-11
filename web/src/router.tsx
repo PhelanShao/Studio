@@ -13,6 +13,16 @@ const EnvironmentPage = lazy(() =>
 const EnvironmentDetail = lazy(
   () => import("./app/dashboard/environment/EnvironmentDetail")
 );
+const HistoryPage = lazy(() =>
+  import("./app/dashboard/history").then((module) => ({
+    default: module.HistoryPage,
+  }))
+);
+const ExecutionDetailPage = lazy(() =>
+  import("./app/dashboard/history").then((module) => ({
+    default: module.ExecutionDetailPage,
+  }))
+);
 const DesktopWindow = lazy(() => import("./app/dashboard/Desktop"));
 const CallbackPage = lazy(() => import("./app/login/CallbackPage"));
 const LoginPage = lazy(() => import("./app/login/LoginPage"));
@@ -46,6 +56,12 @@ export default function Router() {
           <Route
             path="/dashboard/environment/:labUuid"
             element={<EnvironmentDetail />}
+          />
+          {/* History 路由 */}
+          <Route path="/dashboard/history/:labId" element={<HistoryPage />} />
+          <Route
+            path="/dashboard/history/execution/:executionId"
+            element={<ExecutionDetailPage />}
           />
         </Route>
         </Routes>
