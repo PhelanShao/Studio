@@ -1,0 +1,60 @@
+# Studio Platform - Production Environment Configuration
+# This file overrides the base studio.yaml for production environment.
+
+server:
+  env: prod
+
+# Production feature flags - conservative settings
+features:
+  workflow_v2: true
+  realtime_camera: true
+  new_auth_flow: false
+  ai_assistant: false
+  advanced_scheduling: false
+  enhanced_tracing: true
+  business_metrics: true
+  rate_limiting: true
+  request_validation: true
+
+# Strict rate limits for production
+rate_limits:
+  enabled: true
+  
+  global:
+    requests_per_second: 500
+    burst: 50
+  
+  user:
+    requests_per_minute: 200
+    burst: 30
+  
+  ip:
+    requests_per_minute: 30
+    burst: 5
+
+# Production observability - reduced sampling for performance
+observability:
+  tracing:
+    enabled: true
+    sampling_rate: 0.1  # 10% sampling in production
+    
+  metrics:
+    enabled: true
+    export_interval_seconds: 60
+    
+  logging:
+    level: info
+    format: json
+
+# Strict security for production
+security:
+  validation:
+    max_request_body_size_mb: 5
+    sanitize_input: true
+  
+  cors:
+    allowed_origins:
+      - "https://sciol.ac.cn"
+      - "https://*.sciol.ac.cn"
+    allow_credentials: true
+

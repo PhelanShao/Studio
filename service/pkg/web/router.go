@@ -14,6 +14,9 @@ import (
 	"github.com/scienceol/studio/service/internal/config"
 	"github.com/scienceol/studio/service/pkg/middleware/auth"
 	"github.com/scienceol/studio/service/pkg/middleware/logger"
+	"github.com/scienceol/studio/service/pkg/middleware/otel"
+	"github.com/scienceol/studio/service/pkg/middleware/ratelimit"
+	"github.com/scienceol/studio/service/pkg/middleware/redis"
 	"github.com/scienceol/studio/service/pkg/web/views/laboratory"
 	"github.com/scienceol/studio/service/pkg/web/views/material"
 	"github.com/scienceol/studio/service/pkg/web/views/realtime"
@@ -42,15 +45,68 @@ func installMiddleware(g *gin.Engine) {
 		AllowOrigins:     []string{"http://localhost:32234", "http://localhost:*", "https://sciol.ac.cn", "https://*.sciol.ac.cn"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// OpenTelemetry tracing middleware (base)
 	g.Use(otelgin.Middleware(fmt.Sprintf("%s-%s",
 		server.Platform,
 		server.Service)))
+
+	// Enhanced OpenTelemetry middleware (business metrics + span attributes)
+	g.Use(otel.EnhancedMiddleware())
+
+	// Rate limiting middleware
+	rateLimitConfig := buildRateLimitConfig()
+	rateLimiter := ratelimit.New(redis.GetClient(), rateLimitConfig)
+	g.Use(rateLimiter.Middleware())
+
+	// Logging middleware
 	g.Use(logger.LogWithWriter())
+}
+
+// buildRateLimitConfig builds rate limit config from studio configuration.
+func buildRateLimitConfig() *ratelimit.Config {
+	studioConfig := config.GetStudioConfig()
+	if studioConfig == nil {
+		return ratelimit.DefaultConfig()
+	}
+
+	cfg := &ratelimit.Config{
+		Enabled:         studioConfig.RateLimits.Enabled,
+		FallbackToLocal: true,
+		Global: ratelimit.TierConfig{
+			RequestsPerSecond: studioConfig.RateLimits.Global.RequestsPerSecond,
+			Burst:             studioConfig.RateLimits.Global.Burst,
+			Window:            time.Second,
+		},
+		User: ratelimit.TierConfig{
+			RequestsPerMinute: studioConfig.RateLimits.User.RequestsPerMinute,
+			Burst:             studioConfig.RateLimits.User.Burst,
+			Window:            time.Minute,
+		},
+		IP: ratelimit.TierConfig{
+			RequestsPerMinute: studioConfig.RateLimits.IP.RequestsPerMinute,
+			Burst:             studioConfig.RateLimits.IP.Burst,
+			Window:            time.Minute,
+		},
+		API: make(map[string]ratelimit.TierConfig),
+	}
+
+	// Convert API-specific limits
+	for path, tier := range studioConfig.RateLimits.API {
+		cfg.API[path] = ratelimit.TierConfig{
+			RequestsPerSecond:  tier.RequestsPerSecond,
+			RequestsPerMinute:  tier.RequestsPerMinute,
+			Burst:              tier.Burst,
+			ConnectionsPerUser: tier.ConnectionsPerUser,
+			Window:             time.Minute,
+		}
+	}
+
+	return cfg
 }
 
 func InstallURL(ctx context.Context, g *gin.Engine) {

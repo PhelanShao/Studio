@@ -14,8 +14,10 @@ import (
 	_ "github.com/scienceol/studio/service/docs" // 导入自动生成的 docs 包
 	"github.com/scienceol/studio/service/internal/config"
 	"github.com/scienceol/studio/service/pkg/core/notify/events"
+	"github.com/scienceol/studio/service/pkg/features"
 	"github.com/scienceol/studio/service/pkg/middleware/db"
 	"github.com/scienceol/studio/service/pkg/middleware/logger"
+	"github.com/scienceol/studio/service/pkg/middleware/otel"
 	"github.com/scienceol/studio/service/pkg/middleware/redis"
 	"github.com/scienceol/studio/service/pkg/middleware/trace"
 	"github.com/scienceol/studio/service/pkg/model/migrate"
@@ -54,19 +56,35 @@ func initGlobalResource(_ *cobra.Command, _ []string) error {
 	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 	v.AutomaticEnv()
 
-	config := config.Global()
-	if err := v.Unmarshal(config); err != nil {
+	globalConfig := config.Global()
+	if err := v.Unmarshal(globalConfig); err != nil {
 		log.Fatal(err)
 	}
 
+	// 加载 YAML 配置文件
+	env := globalConfig.Server.Env
+	if _, err := config.LoadStudioConfig("config", env); err != nil {
+		log.Printf("Warning: Could not load studio config: %v (using defaults)", err)
+	}
+
+	// 初始化 Feature Flags
+	configViper := config.GetConfigViper()
+	if configViper != nil {
+		features.Init(configViper)
+		log.Printf("Feature flags initialized: %v", features.GetManager().GetAll())
+	}
+
+	// 初始化业务指标 (确保 metrics 被初始化)
+	_ = otel.GetMetrics()
+
 	// 日志初始化
 	logger.Init(&logger.LogConfig{
-		Path:     config.Log.LogPath,
-		LogLevel: config.Log.LogLevel,
+		Path:     globalConfig.Log.LogPath,
+		LogLevel: globalConfig.Log.LogLevel,
 		ServiceEnv: logger.ServiceEnv{
-			Platform: config.Server.Platform,
-			Service:  config.Server.Service,
-			Env:      config.Server.Env,
+			Platform: globalConfig.Server.Platform,
+			Service:  globalConfig.Server.Service,
+			Env:      globalConfig.Server.Env,
 		},
 	})
 

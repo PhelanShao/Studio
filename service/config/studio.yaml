@@ -1,0 +1,127 @@
+# Studio Platform - Main Configuration
+# This file contains the default configuration for Studio.
+# Environment-specific overrides can be placed in studio.{env}.yaml files.
+
+# Server configuration
+server:
+  platform: sciol
+  service: api
+  port: 48197
+  schedule_port: 48198
+  env: dev
+
+# Feature flags
+features:
+  # Core features
+  workflow_v2: true
+  realtime_camera: true
+  new_auth_flow: false
+  
+  # Experimental features
+  ai_assistant: false
+  advanced_scheduling: false
+  
+  # Observability features
+  enhanced_tracing: true
+  business_metrics: true
+  
+  # Security features
+  rate_limiting: true
+  request_validation: true
+
+# Rate limiting configuration
+rate_limits:
+  enabled: true
+  
+  # Global rate limits
+  global:
+    requests_per_second: 1000
+    burst: 100
+  
+  # Per-user rate limits (authenticated requests)
+  user:
+    requests_per_minute: 300
+    burst: 50
+  
+  # Per-IP rate limits (unauthenticated requests)
+  ip:
+    requests_per_minute: 60
+    burst: 10
+  
+  # API-specific rate limits (path patterns)
+  api:
+    # Heavy operations
+    "/api/v1/lab/run/workflow":
+      requests_per_minute: 10
+      burst: 2
+    "/api/v1/lab/action/run":
+      requests_per_minute: 30
+      burst: 5
+    
+    # Edge device sync (higher limits)
+    "/api/v1/edge/*":
+      requests_per_minute: 1000
+      burst: 100
+    
+    # WebSocket connections
+    "/api/v1/ws/*":
+      connections_per_user: 10
+
+# Observability configuration
+observability:
+  tracing:
+    enabled: true
+    sampling_rate: 1.0  # 1.0 = 100% sampling
+    
+  metrics:
+    enabled: true
+    export_interval_seconds: 30
+    
+  logging:
+    level: info
+    format: json
+
+# Workflow configuration
+workflow:
+  max_concurrent_executions: 100
+  default_timeout_seconds: 300
+  max_retry_attempts: 3
+  
+  # Job queue configuration
+  queue:
+    name: studio_workflow_job_queue
+    max_workers: 10
+
+# Material/Device configuration
+material:
+  sync_interval_seconds: 30
+  max_devices_per_lab: 100
+
+# Security configuration
+security:
+  # Request validation
+  validation:
+    max_request_body_size_mb: 10
+    sanitize_input: true
+  
+  # CORS configuration (can be overridden per environment)
+  cors:
+    allowed_origins:
+      - "http://localhost:32234"
+      - "http://localhost:*"
+      - "https://sciol.ac.cn"
+      - "https://*.sciol.ac.cn"
+    allowed_methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowed_headers:
+      - Origin
+      - Content-Type
+      - Authorization
+    allow_credentials: true
+    max_age_hours: 12
+

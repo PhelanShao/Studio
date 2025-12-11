@@ -1,0 +1,35 @@
+# Studio Platform - Development Environment Configuration
+# This file overrides the base studio.yaml for development environment.
+
+server:
+  env: dev
+
+# Development-specific feature flags
+features:
+  # Enable all experimental features for testing
+  ai_assistant: true
+  advanced_scheduling: true
+  
+  # Disable rate limiting for easier development
+  rate_limiting: false
+
+# Relaxed rate limits for development
+rate_limits:
+  enabled: false  # Disable in dev for easier debugging
+
+# Development observability settings
+observability:
+  tracing:
+    enabled: true
+    sampling_rate: 1.0  # Full sampling in dev
+    
+  logging:
+    level: debug
+    format: text  # More readable in development
+
+# Relaxed security for development
+security:
+  cors:
+    allowed_origins:
+      - "*"  # Allow all origins in development
+
