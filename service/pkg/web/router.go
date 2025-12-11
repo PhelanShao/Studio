@@ -25,6 +25,7 @@ import (
 	"github.com/scienceol/studio/service/pkg/web/views"
 	"github.com/scienceol/studio/service/pkg/web/views/action"
 	"github.com/scienceol/studio/service/pkg/web/views/foo"
+	"github.com/scienceol/studio/service/pkg/web/views/history"
 	"github.com/scienceol/studio/service/pkg/web/views/labstatus"
 	"github.com/scienceol/studio/service/pkg/web/views/login"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -257,6 +258,18 @@ func InstallURL(ctx context.Context, g *gin.Engine) {
 				v1.PUT("/lab/run/workflow", workflowHandle.RunWorkflow)
 
 				workflowRouter.GET("/ws/workflow/:uuid", workflowHandle.LabWorkflow) // TODO: websocket 放在统一的路由下
+			}
+
+			// History API
+			{
+				historyHandle := history.NewHandler()
+				historyRouter := labRouter.Group("/history")
+				historyRouter.GET("/workflow", historyHandle.ListWorkflowExecutions)                        // 工作流执行历史列表
+				historyRouter.GET("/workflow/execution/:execution_uuid", historyHandle.GetWorkflowExecution) // 工作流执行详情
+				historyRouter.GET("/device", historyHandle.ListDeviceEvents)                                 // 设备事件历史
+
+				// Lab stats (mounted at lab level)
+				labRouter.GET("/:lab_id/stats", historyHandle.GetLabStats) // 实验室统计
 			}
 		}
 	}

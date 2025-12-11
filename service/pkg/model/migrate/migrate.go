@@ -27,6 +27,10 @@ func Table(_ context.Context) error {
 			&model.Tags{},
 			&model.LaboratoryMember{},
 			&model.LaboratoryInvitation{},
+			// Event History tables
+			&model.WorkflowExecutionHistory{},
+			&model.ActionExecutionHistory{},
+			&model.DeviceEventHistory{},
 		) // 动作节点handle 模板
 	}, func() error {
 		// 创建 gin 索引
